@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -88,9 +89,14 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 			.userDetailsService(userDetailsService); // 유저계정을 조회하는 과정을 처리하는 부분 
 		
 		http.sessionManagement() //세션관리 기능이 작동함
+		.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+		.sessionFixation().none() //기본값 // none, migrationSession, newSession
 		.maximumSessions(1) // 최대 세션 수
 		.maxSessionsPreventsLogin(false) // 동시 로그인 차단 기본 false : 기존 세션만료 
 		.expiredUrl("/expired"); //세션이 만료된 경우 이동 할 페이지
+		
+		
+		
 	}
 	
 }
