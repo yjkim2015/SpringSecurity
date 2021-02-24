@@ -9,6 +9,7 @@ import javax.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
@@ -27,6 +28,14 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
 	@Autowired
 	UserDetailsService userDetailsService;
+	
+	@Override
+	protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+		auth.inMemoryAuthentication().withUser("user").password("{noop}1111").roles("USER");
+		auth.inMemoryAuthentication().withUser("sys").password("{noop}1111").roles("SYS");
+		auth.inMemoryAuthentication().withUser("admin").password("{noop}1111").roles("ADMIN");
+
+	}
 	
 	
 	@Override
@@ -95,7 +104,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 		.maxSessionsPreventsLogin(false) // 동시 로그인 차단 기본 false : 기존 세션만료 
 		.expiredUrl("/expired"); //세션이 만료된 경우 이동 할 페이지
 		
-		
+		http.antMatcher("/shop/**")
+		.authorizeRequests()
+			.antMatchers("/shop/login", "/shop/users/**").permitAll()
+			.antMatchers("/shop/mypage").hasRole("USER")
+			.antMatchers("/shop/admin/pay").access("hasRole('ADMIN')")
+			.antMatchers("/shop/admin/**").access("hasRole('ADMIN') or hasRole('SYS')")
+			.anyRequest().authenticated();
 		
 	}
 	
