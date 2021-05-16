@@ -1,6 +1,7 @@
 package io.security.basicsecurity;
 
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -17,10 +18,15 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.logout.LogoutHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
+import org.springframework.security.web.savedrequest.RequestCache;
+import org.springframework.security.web.savedrequest.SavedRequest;
 
 @Configuration 
 @EnableWebSecurity
@@ -41,6 +47,12 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
 		http.authorizeRequests() //http 방식으로 요청을 할 때 보안검사
+			//.antMatchers("/shop/**")
+			.antMatchers("/login").permitAll()
+			.antMatchers("/user").hasRole("USER")
+			.antMatchers("/admin/pay").access("hasRole('ADMIN')")
+			.antMatchers("/admin/**").access("hasRole('ADMIN') or hasRole('SYS')")
+
 			.anyRequest() //어떤 요청이든
 			.authenticated() //인증 받도록 
 			.and() 
@@ -56,8 +68,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 				@Override
 				public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
 						Authentication authentication) throws IOException, ServletException {
-						System.out.println("authentication " + authentication.getName());
-						response.sendRedirect("/");
+						/*이전 요청에 성공한 url로 들어간다*/
+						RequestCache requestCache = new HttpSessionRequestCache();
+						SavedRequest savedRequest = requestCache.getRequest(request, response);
+						String redirectUrl = savedRequest.getRedirectUrl();
+						response.sendRedirect(redirectUrl);
 				}
 			})
 			.failureHandler(new AuthenticationFailureHandler() {
@@ -104,14 +119,28 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 		.maxSessionsPreventsLogin(false) // 동시 로그인 차단 기본 false : 기존 세션만료 
 		.expiredUrl("/expired"); //세션이 만료된 경우 이동 할 페이지
 		
-		http.antMatcher("/shop/**")
-		.authorizeRequests()
-			.antMatchers("/shop/login", "/shop/users/**").permitAll()
-			.antMatchers("/shop/mypage").hasRole("USER")
-			.antMatchers("/shop/admin/pay").access("hasRole('ADMIN')")
-			.antMatchers("/shop/admin/**").access("hasRole('ADMIN') or hasRole('SYS')")
-			.anyRequest().authenticated();
+
 		
+		http
+			.exceptionHandling()  
+			.authenticationEntryPoint(new AuthenticationEntryPoint() {
+				//인증실패시 처리
+				@Override
+				public void commence(HttpServletRequest request, HttpServletResponse response,
+						AuthenticationException authException) throws IOException, ServletException {
+					response.sendRedirect("/login");
+				}
+			} ) 
+			.accessDeniedHandler(new AccessDeniedHandler() {
+				//인가실패시 처리
+				@Override
+				public void handle(HttpServletRequest request, HttpServletResponse response,
+						org.springframework.security.access.AccessDeniedException accessDeniedException)
+						throws IOException, ServletException {
+					response.sendRedirect("/denied");
+				}
+			});
+			
 	}
 	
 }
